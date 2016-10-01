@@ -1,8 +1,8 @@
 package main
 
 import (
+	"condenser/itunes"
 	"net/http"
-	"strongcast/itunes"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"

@@ -2,10 +2,10 @@ build: ## Runs go build on the project
 	go build
 
 dev: ## Builds and runs the service with local environment
-	go build && ./strongcast
+	go build && ./condenser
 
 run: ## Runs the service with local environment unless overridden
-	./strongcast
+	./condenser
 
 test: ## Runs gb test with the -v verbose flag
 	go test -v
