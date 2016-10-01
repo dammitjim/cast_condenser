@@ -40,7 +40,7 @@ func Search(term, limit string) (*external.SearchResponse, error) {
 	}
 
 	itunesHTTPClient := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 
 	u := constructRequestURL(term, limit)
@@ -77,9 +77,10 @@ func Search(term, limit string) (*external.SearchResponse, error) {
 	normalisedResults := make([]*external.Podcast, len(results.Podcasts))
 	for i, result := range results.Podcasts {
 		normalisedResults[i] = &external.Podcast{
-			Owner:       result.ArtistName,
-			PodcastName: result.CollectionName,
-			FeedURL:     result.FeedURL,
+			ItunesID: result.CollectionID,
+			Owner:    result.ArtistName,
+			Name:     result.CollectionName,
+			FeedURL:  result.FeedURL,
 			Artwork: &external.Artwork{
 				Image60URL:  result.ArtworkURL60,
 				Image100URL: result.ArtworkURL100,

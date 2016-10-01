@@ -3,6 +3,7 @@ package api
 import (
 	"condenser/api/apierrors"
 	"condenser/api/external/itunes"
+	"condenser/api/process"
 	"encoding/json"
 	"net/http"
 
@@ -33,19 +34,24 @@ func SearchHandler(
 	qv := r.URL.Query()
 	term := qv.Get("term")
 	limit := qv.Get("limit")
-	// TODO validate things
 	if limit == "" {
-		limit = "1"
+		limit = "5"
 	}
 
 	content, err := itunes.Search(term, limit)
 	if err != nil {
 		handleError(w, err)
+		return
+	}
+
+	if len(content.Results) > 0 {
+		go process.Run(content.Results...)
 	}
 
 	byt, err := json.Marshal(content)
 	if err != nil {
 		handleError(w, err)
+		return
 	}
 
 	h := w.Header()

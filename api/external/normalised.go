@@ -10,10 +10,11 @@ type Artwork struct {
 // Podcast is a normalised version of either an itunes podcast
 // or an internal API podcast.
 type Podcast struct {
-	Artwork     *Artwork `json:"artwork"`
-	Owner       string   `json:"owner"`
-	PodcastName string   `json:"name"`
-	FeedURL     string   `json:"-"`
+	Artwork  *Artwork `json:"artwork"`
+	Owner    string   `json:"owner"`
+	Name     string   `json:"name"`
+	FeedURL  string   `json:"feed"`
+	ItunesID int      `json:"itunes_id"`
 }
 
 // SearchResponse is the json output for a search request.

@@ -1,11 +1,16 @@
 build: ## Runs go build on the project
-	go build && mv condenser ./bin/condenser
+	go build
+
+install: ## Installs the go project
+	go install
 
 dev: ## Builds and runs the service with local environment
-	go build && mv condenser ./bin/condenser && ./bin/condenser
+	go build
+	go install
+	condenser
 
 run: ## Runs the service with local environment unless overridden
-	./bin/condenser
+	condenser
 
 test: ## Runs gb test with the -v verbose flag
 	go test -v
