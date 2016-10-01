@@ -14,6 +14,18 @@ import (
 )
 
 const itunesBaseURL = "https://itunes.apple.com"
+const itunesHTTPClientTimeout = 10
+
+var itunesHTTPClient *http.Client
+
+// Setup initialises the package.
+func Setup() error {
+	itunesHTTPClient = &http.Client{
+		Timeout: itunesHTTPClientTimeout * time.Second,
+	}
+
+	return nil
+}
 
 // construct the itunes request url
 func constructRequestURL(term, limit string) string {
@@ -23,6 +35,34 @@ func constructRequestURL(term, limit string) string {
 		limit,
 	)
 	return u
+}
+
+// request itunes api for data
+// error on stdlib err or non 200 code returned
+func contactItunes(apiURL string) ([]byte, error) {
+	resp, err := itunesHTTPClient.Get(apiURL)
+	if err != nil {
+		return nil, apierrors.Generic.WithDetails(
+			fmt.Sprintf("itunes/itunes.go|Search: %s", err.Error()))
+	}
+
+	defer resp.Body.Close()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, apierrors.Generic.WithDetails(
+			fmt.Sprintf("itunes/itunes.go|Search: %s", err.Error()))
+	}
+
+	if resp.StatusCode != 200 {
+		// TODO should probably make this not a thing
+		s := string(buf[:])
+		logrus.Error(s)
+		return nil, apierrors.ITunesNon200.WithDetails(
+			fmt.Sprintf("itunes/itunes.go|Search: %s", s))
+	}
+
+	return buf, nil
 }
 
 // Search hits the itunes API for data and returns a normalised
@@ -39,34 +79,17 @@ func Search(term, limit string) (*external.SearchResponse, error) {
 			"itunes/itunes.go|Search: no limit provided")
 	}
 
-	itunesHTTPClient := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	apiURL := constructRequestURL(term, limit)
+	logrus.WithField("url", apiURL).Info("Sending request to iTunes API.")
 
-	u := constructRequestURL(term, limit)
-	logrus.WithField("url", u).Info("Sending request to iTunes API.")
-
-	resp, err := itunesHTTPClient.Get(u)
+	// get our response body as a byte slice
+	buf, err := contactItunes(apiURL)
 	if err != nil {
 		return nil, apierrors.Generic.WithDetails(
 			fmt.Sprintf("itunes/itunes.go|Search: %s", err.Error()))
 	}
 
-	defer resp.Body.Close()
-
-	buf, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, apierrors.Generic.WithDetails(
-			fmt.Sprintf("itunes/itunes.go|Search: %s", err.Error()))
-	}
-
-	if resp.StatusCode != 200 {
-		s := string(buf[:])
-		logrus.Error(s)
-		return nil, apierrors.ITunesNon200.WithDetails(
-			fmt.Sprintf("itunes/itunes.go|Search: %s", s))
-	}
-
+	// unpack response buffer into struct
 	var results itunesSearchResults
 	err = json.Unmarshal(buf, &results)
 	if err != nil {
@@ -74,6 +97,7 @@ func Search(term, limit string) (*external.SearchResponse, error) {
 			fmt.Sprintf("itunes/itunes.go|Search: %s", err.Error()))
 	}
 
+	// extract normalised results
 	normalisedResults := make([]*external.Podcast, len(results.Podcasts))
 	for i, result := range results.Podcasts {
 		normalisedResults[i] = &external.Podcast{

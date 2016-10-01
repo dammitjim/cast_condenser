@@ -2,6 +2,7 @@ package main
 
 import (
 	"condenser/api"
+	"condenser/api/external/itunes"
 	"fmt"
 	"os"
 
@@ -16,7 +17,7 @@ func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func main() {
-	// TODO environment setup
+	// Environment setup
 	if os.Getenv("debug") == "true" {
 		logrus.SetLevel(logrus.DebugLevel)
 	} else {
@@ -27,6 +28,13 @@ func main() {
 	host := "0.0.0.0"
 	addr := fmt.Sprintf("%s:%s", host, port)
 
+	// Package initialisation
+	err := itunes.Setup()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	// Routing
 	router := httprouter.New()
 	router.GET("/", index)
 	router.GET("/search", api.SearchHandler)
