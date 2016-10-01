@@ -1,12 +1,28 @@
 package api
 
 import (
+	"condenser/api/apierrors"
 	"condenser/api/external/itunes"
+	"encoding/json"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 )
+
+func handleError(w http.ResponseWriter, err error) {
+	var ae *apierrors.APIError
+	switch err.(type) {
+	case *apierrors.APIError:
+		ae = err.(*apierrors.APIError)
+	case apierrors.APIError:
+		e := err.(apierrors.APIError)
+		ae = &e
+	default:
+		ae = apierrors.Generic.WithDetails(err.Error())
+	}
+
+	http.Error(w, ae.Error(), ae.HTTPStatusCode)
+}
 
 // SearchHandler searches both the itunes and django APIs for results.
 func SearchHandler(
@@ -22,8 +38,21 @@ func SearchHandler(
 		limit = "1"
 	}
 
-	err := itunes.Search(term, limit)
+	content, err := itunes.Search(term, limit)
 	if err != nil {
-		logrus.Error(err)
+		handleError(w, err)
 	}
+
+	byt, err := json.Marshal(content)
+	if err != nil {
+		handleError(w, err)
+	}
+
+	h := w.Header()
+	w.WriteHeader(200)
+	h.Set("Content-Type", "application/json; charset=utf-8")
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Methods", "GET")
+	h.Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Write([]byte(byt))
 }
