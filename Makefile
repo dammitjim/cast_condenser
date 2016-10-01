@@ -9,6 +9,11 @@ dev: ## Builds and runs the service with local environment
 	go install
 	condenser
 
+debug: ## Builds and runs the service with local environment
+	go build
+	go install
+	debug=true condenser
+
 run: ## Runs the service with local environment unless overridden
 	condenser
 

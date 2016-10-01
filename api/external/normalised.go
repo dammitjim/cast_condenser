@@ -13,8 +13,8 @@ type Podcast struct {
 	Artwork  *Artwork `json:"artwork"`
 	Owner    string   `json:"owner"`
 	Name     string   `json:"name"`
-	FeedURL  string   `json:"feed"`
-	ItunesID int      `json:"itunes_id"`
+	FeedURL  string   `json:"-"`
+	ItunesID int      `json:"-"`
 }
 
 // SearchResponse is the json output for a search request.

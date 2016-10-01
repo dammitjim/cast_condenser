@@ -21,10 +21,9 @@ var timeTemplates = []string{
 func Run(podcasts ...*external.Podcast) {
 	for _, podcast := range podcasts {
 		logrus.WithFields(logrus.Fields{
-			"name":  podcast.Name,
 			"owner": podcast.Owner,
 			"feed":  podcast.FeedURL,
-		}).Info("processing podcast")
+		}).Info("processing " + podcast.Name)
 
 		feed, err := getFeed(podcast.FeedURL)
 		if err != nil {
@@ -61,11 +60,13 @@ func extractTracks(items []*gofeed.Item) ([]*Track, error) {
 
 		var publishedParsed time.Time
 		success := false
+
+		// TODO template checking order optimisation here?
 		for _, template := range timeTemplates {
 			err = nil
 			publishedParsed, err = time.Parse(template, item.Published)
 			if err != nil {
-				// logrus.Warn(err)
+				logrus.Debug(err)
 				continue
 			}
 			success = true

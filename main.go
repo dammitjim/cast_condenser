@@ -3,6 +3,7 @@ package main
 import (
 	"condenser/api"
 	"fmt"
+	"os"
 
 	"net/http"
 
@@ -16,7 +17,11 @@ func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func main() {
 	// TODO environment setup
-	logrus.SetLevel(logrus.DebugLevel)
+	if os.Getenv("debug") == "true" {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
 
 	port := "1337"
 	host := "0.0.0.0"
