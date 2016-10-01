@@ -1,14 +1,15 @@
-package main
+package api
 
 import (
-	"condenser/itunes"
+	"condenser/api/external/itunes"
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 )
 
-func searchHandler(
+// SearchHandler searches both the itunes and django APIs for results.
+func SearchHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 	_ httprouter.Params,

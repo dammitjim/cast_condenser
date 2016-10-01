@@ -1,6 +1,7 @@
 package main
 
 import (
+	"condenser/api"
 	"fmt"
 
 	"net/http"
@@ -23,7 +24,7 @@ func main() {
 
 	router := httprouter.New()
 	router.GET("/", index)
-	router.GET("/search", searchHandler)
+	router.GET("/search", api.SearchHandler)
 
 	logrus.WithFields(logrus.Fields{
 		"port": port,
