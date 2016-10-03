@@ -10,13 +10,6 @@ import (
 	ext "github.com/mmcdole/gofeed/extensions"
 )
 
-var timeTemplates = []string{
-	time.RFC1123,
-	time.RFC1123Z,
-	"Mon, 2 Jan 2006 15:04 MST",
-	"Mon, 2 Jan 2006 15:04 -0700",
-}
-
 // Run is the main function for processing a set of podcasts.
 func Run(podcasts ...*external.Podcast) {
 	// Iterate through podcasts in a single routine.
@@ -52,10 +45,15 @@ func Run(podcasts ...*external.Podcast) {
 	logrus.Info("done processing new podcasts")
 }
 
+const itemConcurrencyLimit = 10
+
 // Concurrently process feed items.
 func extractTracks(items []*gofeed.Item) ([]*Track, error) {
 	// Process x items at once.
-	concurrentLimit := 10
+	concurrentLimit := itemConcurrencyLimit
+	if len(items) < concurrentLimit {
+		concurrentLimit = len(items)
+	}
 
 	// Semaphore channel to block extra goroutines from spawning.
 	sem := make(chan bool, concurrentLimit)
@@ -113,7 +111,7 @@ func extractTracks(items []*gofeed.Item) ([]*Track, error) {
 func processFeedItem(item *gofeed.Item) (*Track, error) {
 	var err error
 	if len(item.Enclosures) != 1 {
-		return nil, errors.New("Multiple enclosures found for " + item.Title)
+		return nil, errors.New("Invalid enclosures found for " + item.Title)
 	}
 
 	if _, ok := item.Extensions["itunes"]; !ok {
@@ -144,7 +142,19 @@ func processFeedItem(item *gofeed.Item) (*Track, error) {
 	return track, nil
 }
 
-// Iterate through our templates and attempt to parse a time object out
+// templates for attemptTimeParsing
+var timeTemplates = []string{
+	time.RFC1123,
+	time.RFC1123Z,
+	"Mon, 2 Jan 2006 15:04 MST",
+	"Mon, 2 Jan 2006 15:04 -0700",
+	"2 January 2006 15:04",
+	"2 January 2006 15:04 MST",
+	"Mon, 2 January 2006 15:04 MST",
+}
+
+// Iterate through our templates and attempt to parse a time object out.
+// Error if all templates have failed.
 func attemptTimeParsing(timeString string) (parsed time.Time, err error) {
 	success := false
 	for _, template := range timeTemplates {
