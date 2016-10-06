@@ -101,15 +101,13 @@ func Search(term, limit string) (*external.SearchResponse, error) {
 	normalisedResults := make([]*external.Podcast, len(results.Podcasts))
 	for i, result := range results.Podcasts {
 		normalisedResults[i] = &external.Podcast{
-			ItunesID: result.CollectionID,
-			Owner:    result.ArtistName,
-			Name:     result.CollectionName,
-			FeedURL:  result.FeedURL,
-			Artwork: &external.Artwork{
-				Image60URL:  result.ArtworkURL60,
-				Image100URL: result.ArtworkURL100,
-				Image600URL: result.ArtworkURL600,
-			},
+			ItunesID:   result.CollectionID,
+			Owner:      result.ArtistName,
+			Name:       result.CollectionName,
+			FeedURL:    result.FeedURL,
+			Artwork60:  result.ArtworkURL60,
+			Artwork100: result.ArtworkURL100,
+			Artwork600: result.ArtworkURL600,
 		}
 	}
 

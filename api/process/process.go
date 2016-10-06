@@ -1,14 +1,132 @@
 package process
 
 import (
+	"bytes"
 	"condenser/api/external"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/mmcdole/gofeed"
 	ext "github.com/mmcdole/gofeed/extensions"
 )
+
+func saveTrack(podcastID int, track *Track) error {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	trackReq := trackRequest{
+		Duration: track.Duration,
+		Name:     track.Name,
+		MediaURL: track.MediaURL,
+		Summary:  track.Summary,
+		Posted:   track.Posted,
+
+		PodcastPK: podcastID,
+	}
+
+	buf, err := json.Marshal(trackReq)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost:8000/podcasts/tracks/", bytes.NewBuffer(buf))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		logrus.WithFields(logrus.Fields{
+			"status": resp.StatusCode,
+			"body":   string(body),
+		}).Error("Non 200 code returned from internal API.")
+		return err
+	}
+
+	var successResp trackSuccessfulSaveResponse
+	err = json.Unmarshal(body, &successResp)
+	if err != nil {
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"id":   successResp.ID,
+		"name": successResp.Name,
+		"link": successResp.APILink,
+	}).Info("Saved new track.")
+
+	return nil
+}
+
+func savePodcast(podcast *external.Podcast) error {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	buf, err := json.Marshal(podcast)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost:8000/podcasts/podcasts/", bytes.NewBuffer(buf))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		logrus.WithFields(logrus.Fields{
+			"status": resp.StatusCode,
+			"body":   string(body),
+		}).Error("Non 200 code returned from internal API.")
+		return err
+	}
+
+	var successResp podcastSuccessfulSaveResponse
+	err = json.Unmarshal(body, &successResp)
+	if err != nil {
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"id":   successResp.ID,
+		"name": successResp.Name,
+		"link": successResp.APILink,
+	}).Info("Saved new podcast.")
+
+	podcast.ID = successResp.ID
+
+	return nil
+}
 
 // Run is the main function for processing a set of podcasts.
 func Run(podcasts ...*external.Podcast) {
@@ -20,7 +138,14 @@ func Run(podcasts ...*external.Podcast) {
 	//
 	// It's more important that the new, individual podcasts are processed
 	// quickly.
+
 	for _, podcast := range podcasts {
+		err := savePodcast(podcast)
+		if err != nil {
+			logrus.WithField("name", podcast.Name).Error(err)
+			continue
+		}
+
 		logrus.WithFields(logrus.Fields{
 			"owner": podcast.Owner,
 			"feed":  podcast.FeedURL,
@@ -39,6 +164,13 @@ func Run(podcasts ...*external.Podcast) {
 		}
 
 		logrus.WithField("len", len(tracks)).Info("processed " + podcast.Name)
+		for _, track := range tracks {
+			err = saveTrack(podcast.ID, track)
+			if err != nil {
+				logrus.WithField("name", track.Name).Error(err)
+				continue
+			}
+		}
 		// TODO do something with the tracks
 	}
 
@@ -131,7 +263,7 @@ func processFeedItem(item *gofeed.Item) (*Track, error) {
 		Duration: itunesData.Duration,
 		MediaURL: item.Enclosures[0].URL,
 		Summary:  itunesData.Summary,
-		Posted:   publishedParsed.Unix(),
+		Posted:   publishedParsed.Format(time.RFC3339Nano),
 	}
 
 	err = track.Validate()
@@ -156,6 +288,7 @@ var timeTemplates = []string{
 // Iterate through our templates and attempt to parse a time object out.
 // Error if all templates have failed.
 func attemptTimeParsing(timeString string) (parsed time.Time, err error) {
+	// TODO cache successful parse indices?
 	success := false
 	for _, template := range timeTemplates {
 		parsed, err = time.Parse(template, timeString)
